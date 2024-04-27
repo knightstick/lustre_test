@@ -189,13 +189,13 @@ var MAX_INDEX_NODE = BUCKET_SIZE / 2;
 var MIN_ARRAY_NODE = BUCKET_SIZE / 4;
 
 // build/dev/javascript/gleam_stdlib/gleam_stdlib.mjs
-function identity(x) {
-  return x;
+function to_string3(term) {
+  return term.toString();
 }
 
-// build/dev/javascript/gleam_stdlib/gleam/dynamic.mjs
-function from(a) {
-  return identity(a);
+// build/dev/javascript/gleam_stdlib/gleam/int.mjs
+function to_string(x) {
+  return to_string3(x);
 }
 
 // build/dev/javascript/gleam_stdlib/gleam/bool.mjs
@@ -237,21 +237,17 @@ var Element = class extends CustomType {
     this.void = void$;
   }
 };
-var Attribute = class extends CustomType {
-  constructor(x0, x1, as_property) {
+var Event = class extends CustomType {
+  constructor(x0, x1) {
     super();
     this[0] = x0;
     this[1] = x1;
-    this.as_property = as_property;
   }
 };
 
 // build/dev/javascript/lustre/lustre/attribute.mjs
-function attribute(name, value) {
-  return new Attribute(name, from(value), false);
-}
-function src(uri) {
-  return attribute("src", uri);
+function on(name, handler) {
+  return new Event("on" + name, handler);
 }
 
 // build/dev/javascript/lustre/lustre/element.mjs
@@ -476,25 +472,25 @@ function createElementNode({ prev, next, dispatch, stack }) {
   return el2;
 }
 var registeredHandlers = /* @__PURE__ */ new WeakMap();
-function lustreGenericEventHandler(event) {
-  const target = event.currentTarget;
+function lustreGenericEventHandler(event2) {
+  const target = event2.currentTarget;
   if (!registeredHandlers.has(target)) {
-    target.removeEventListener(event.type, lustreGenericEventHandler);
+    target.removeEventListener(event2.type, lustreGenericEventHandler);
     return;
   }
   const handlersForEventTarget = registeredHandlers.get(target);
-  if (!handlersForEventTarget.has(event.type)) {
-    target.removeEventListener(event.type, lustreGenericEventHandler);
+  if (!handlersForEventTarget.has(event2.type)) {
+    target.removeEventListener(event2.type, lustreGenericEventHandler);
     return;
   }
-  handlersForEventTarget.get(event.type)(event);
+  handlersForEventTarget.get(event2.type)(event2);
 }
-function lustreServerEventHandler(event) {
-  const el2 = event.target;
-  const tag = el2.getAttribute(`data-lustre-on-${event.type}`);
+function lustreServerEventHandler(event2) {
+  const el2 = event2.target;
+  const tag = el2.getAttribute(`data-lustre-on-${event2.type}`);
   const data = JSON.parse(el2.getAttribute("data-lustre-data") || "{}");
   const include = JSON.parse(el2.getAttribute("data-lustre-include") || "[]");
-  switch (event.type) {
+  switch (event2.type) {
     case "input":
     case "change":
       include.push("target.value");
@@ -505,7 +501,7 @@ function lustreServerEventHandler(event) {
     data: include.reduce(
       (data2, property) => {
         const path = property.split(".");
-        for (let i = 0, o = data2, e = event; i < path.length; i++) {
+        for (let i = 0, o = data2, e = event2; i < path.length; i++) {
           if (i === path.length - 1) {
             o[path[i]] = e[path[i]];
           } else {
@@ -572,13 +568,13 @@ function diffKeyedChild(prevChild, child, el2, stack, incomingKeyedChildren, key
   stack.unshift({ prev: keyedChild, next: child, parent: el2 });
   return prevChild;
 }
-function iterateElement(element3, processElement) {
-  if (element3.elements !== void 0) {
-    for (const currElement of element3.elements) {
+function iterateElement(element2, processElement) {
+  if (element2.elements !== void 0) {
+    for (const currElement of element2.elements) {
       processElement(currElement);
     }
   } else {
-    processElement(element3);
+    processElement(element2);
   }
 }
 
@@ -592,19 +588,19 @@ var LustreClientApplication2 = class _LustreClientApplication {
   #model = null;
   #update = null;
   #view = null;
-  static start(flags, selector, init2, update2, view) {
+  static start(flags, selector, init3, update3, view2) {
     if (!is_browser())
       return new Error(new NotABrowser());
     const root2 = selector instanceof HTMLElement ? selector : document.querySelector(selector);
     if (!root2)
       return new Error(new ElementNotFound(selector));
-    const app = new _LustreClientApplication(init2(flags), update2, view, root2);
+    const app = new _LustreClientApplication(init3(flags), update3, view2, root2);
     return new Ok((msg) => app.send(msg));
   }
-  constructor([model, effects], update2, view, root2 = document.body, isComponent = false) {
+  constructor([model, effects], update3, view2, root2 = document.body, isComponent = false) {
     this.#model = model;
-    this.#update = update2;
-    this.#view = view;
+    this.#update = update3;
+    this.#view = view2;
     this.#root = root2;
     this.#effects = effects.all.toArray();
     this.#didUpdate = true;
@@ -630,9 +626,9 @@ var LustreClientApplication2 = class _LustreClientApplication {
         return;
     }
   }
-  emit(event, data) {
+  emit(event2, data) {
     this.#root.dispatchEvent(
-      new CustomEvent(event, {
+      new CustomEvent(event2, {
         bubbles: true,
         detail: data,
         composed: true
@@ -661,7 +657,7 @@ var LustreClientApplication2 = class _LustreClientApplication {
     while (this.#effects.length) {
       this.#effects.shift()(
         (msg) => this.send(new Dispatch(msg)),
-        (event, data) => this.emit(event, data)
+        (event2, data) => this.emit(event2, data)
       );
     }
     if (this.#queue.length) {
@@ -713,11 +709,11 @@ var is_browser = () => window && window.document;
 
 // build/dev/javascript/lustre/lustre.mjs
 var App = class extends CustomType {
-  constructor(init2, update2, view, on_attribute_change) {
+  constructor(init3, update3, view2, on_attribute_change) {
     super();
-    this.init = init2;
-    this.update = update2;
-    this.view = view;
+    this.init = init3;
+    this.update = update3;
+    this.view = view2;
     this.on_attribute_change = on_attribute_change;
   }
 };
@@ -729,20 +725,17 @@ var ElementNotFound = class extends CustomType {
 };
 var NotABrowser = class extends CustomType {
 };
-function application(init2, update2, view) {
-  return new App(init2, update2, view, new None());
+function application(init3, update3, view2) {
+  return new App(init3, update3, view2, new None());
 }
-function element2(html) {
-  let init2 = (_) => {
-    return [void 0, none()];
+function simple(init3, update3, view2) {
+  let init$1 = (flags) => {
+    return [init3(flags), none()];
   };
-  let update2 = (_, _1) => {
-    return [void 0, none()];
+  let update$1 = (model, msg) => {
+    return [update3(model, msg), none()];
   };
-  let view = (_) => {
-    return html;
-  };
-  return application(init2, update2, view);
+  return application(init$1, update$1, view2);
 }
 function start3(app, selector, flags) {
   return guard(
@@ -755,45 +748,63 @@ function start3(app, selector, flags) {
 }
 
 // build/dev/javascript/lustre/lustre/element/html.mjs
-function h1(attrs, children) {
-  return element("h1", attrs, children);
-}
 function div(attrs, children) {
   return element("div", attrs, children);
 }
-function figcaption(attrs, children) {
-  return element("figcaption", attrs, children);
+function button(attrs, children) {
+  return element("button", attrs, children);
 }
-function figure(attrs, children) {
-  return element("figure", attrs, children);
+
+// build/dev/javascript/lustre/lustre/event.mjs
+function on2(name, handler) {
+  return on(name, handler);
 }
-function img(attrs) {
-  return element("img", attrs, toList([]));
+function on_click(msg) {
+  return on2("click", (_) => {
+    return new Ok(msg);
+  });
 }
 
 // build/dev/javascript/lustre_test/lustre_test.mjs
-function main() {
-  let app = element2(
-    div(
-      toList([]),
-      toList([
-        h1(toList([]), toList([text("Hello, world!")])),
-        figure(
-          toList([]),
-          toList([
-            img(toList([src("https://cataas.com/cat")])),
-            figcaption(toList([]), toList([text("A cat!")]))
-          ])
-        )
-      ])
-    )
+var Increment = class extends CustomType {
+};
+var Decrement = class extends CustomType {
+};
+function init2(_) {
+  return 0;
+}
+function update2(model, msg) {
+  if (msg instanceof Increment) {
+    return model + 1;
+  } else {
+    return model - 1;
+  }
+}
+function view(model) {
+  let count = to_string(model);
+  return div(
+    toList([]),
+    toList([
+      button(
+        toList([on_click(new Increment())]),
+        toList([text("+")])
+      ),
+      text(count),
+      button(
+        toList([on_click(new Decrement())]),
+        toList([text("-")])
+      )
+    ])
   );
+}
+function main() {
+  let app = simple(init2, update2, view);
   let $ = start3(app, "#app", void 0);
   if (!$.isOk()) {
     throw makeError(
       "assignment_no_match",
       "lustre_test",
-      17,
+      9,
       "main",
       "Assignment pattern did not match",
       { value: $ }
